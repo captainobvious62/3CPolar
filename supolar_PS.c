@@ -21,10 +21,10 @@ char *sdoc[] = {
 " supolar_PS <stdin [optional parameters]                               ",
 "                                                                       ",
 " Required parameters:                                                  ",
-"    none                                                               ",
+"    -ntr (number of traces) needs to be specified in the SU file       ",
 "                                                                       ",
 " Optional parameters:                                                  ",
-"    dt=(from header)  time sampling intervall in seconds               ",
+"    dt=(from header)  time sampling interval in seconds                ",
 "    wl=0.1            correlation window length in seconds             ",
 "    win=boxcar        correlation window shape, choose \"boxcar\",     ",
 "                      \"hanning\", \"bartlett\", or \"welsh\"          ",
@@ -48,7 +48,7 @@ char *sdoc[] = {
 "                      \"deg\", or \"gon\"                              ",
 "    all=0             1, 2, 3 = set all output flags to that value     ",
 "    verbose=0         1 = echo additional information                  ",
-"    kwl=100           kurtosis window length, samples                  ",
+"    kwl=5*(1/dt)      kurtosis window length, samples                  ",
 "                                                                       ",
 " Notes:                                                                ",
 "    Three adjacent traces are considered as one three-component        ",
@@ -127,7 +127,7 @@ float calc_theta(float **v, int opt);
 float covar(float *data1, float *data2, int istart, int iwl, float *w);
 float calc_pfilt(float rl, float theta);
 float calc_sfilt(float rl, float theta);
-float kurtosiswindow(float *data, float *data_kwl, int it, int iwl, int nt);
+float kurtosiswindow(float *data, float *data_kwl, int it, int kwl, int nt);
 void ampparams(float **indata, float *data_ir, float *data_qr, int nt, int iwl);
 void calc_dir(float **data3c_dir, float **v, int it);
 void calc_window(float *w, int iwl, int iwin);
@@ -153,7 +153,8 @@ int main(int argc, char **argv)
     FILE *thetafp=NULL, *phifp=NULL, *dirfp=NULL;
     FILE *erfp=NULL, *irfp=NULL, *qrfp=NULL;
     FILE *headerfp=NULL, *pfiltfp=NULL, *sfiltfp=NULL;
-    FILE *pkur=NULL, *skur=NULL; 
+    FILE *nfiltfp=NULL, *efiltfp=NULL;
+ //   FILE *pkur=NULL, *skur=NULL; 
         /* temporary file for trace headers */
 			 /* (one 3C station only) */
         
@@ -172,7 +173,7 @@ int main(int argc, char **argv)
     int iwl;            /* correlation window length in samples */
     int nstat;          /* number of 3-component datasets */
     int nt;             /* number of time samples in one trace */
-    int kwl;            /* kurtosis window length in seconds */    
+//    int kwl;            /* kurtosis window length in seconds */    
 
 
     float **data3c;     /* three-component data ([1..3][0..nt-1]) */
@@ -203,9 +204,9 @@ int main(int argc, char **argv)
     float *data_zfilt=NULL;  /* Z Filtered Trace */
     float *data_nfilt=NULL;  /* N Filtered Trace */
     float *data_efilt=NULL;  /* E Filtered Trace */
-    float *data_kwl=NULL;   /* Data for Kurtosis Window */
-    float *data_pkur=NULL;   /* Kurtosis detector for P */
-    float *data_skur=NULL;   /* Kurtosis detector for S */
+//    float *data_kwl=NULL;   /* Data for Kurtosis Window */
+//    float *data_pkur=NULL;   /* Kurtosis detector for P */
+//    float *data_skur=NULL;   /* Kurtosis detector for S */
     float **data3c_dir=NULL; /* 3 components of direction of polarization ([1..3][0..nt-1]) */
     
     /* initialize */
@@ -224,7 +225,7 @@ int main(int argc, char **argv)
     if (!getparfloat("dt", &dt)) dt = ((double) tr.dt)/1000000.0;
     if (!getparfloat("rlq", &rlq)) rlq = 1.0;
     if (!getparint("verbose", &verbose)) verbose = 0;
-    if (!getparint("kwl", &kwl)) kwl = 100;    
+//    if (!getparint("kwl", &kwl)) kwl = 5 * ((int) 1/dt);    
 
     /* ... and output flags */
     if (!getparint("all", &all))       all = 0;
@@ -295,8 +296,10 @@ int main(int argc, char **argv)
     sprintf(fname, "%s.qr", file);    if (amp) qrfp = efopen(fname, "w");
     sprintf(fname, "%s.pfilt", file); if (rl && theta) pfiltfp = efopen(fname, "w");
     sprintf(fname, "%s.sfilt", file); if (rl && theta) sfiltfp = efopen(fname, "w");
-    sprintf(fname, "%s.pkur", file); if (rl && theta) pkur = efopen(fname, "w");
-    sprintf(fname, "%s.skur", file); if (rl && theta) skur = efopen(fname, "w");
+    sprintf(fname, "%s.nfilt", file); if (rl && theta) nfiltfp = efopen(fname, "w");
+    sprintf(fname, "%s.efilt", file); if (rl && theta) efiltfp = efopen(fname, "w");
+  //  sprintf(fname, "%s.pkur", file); if (rl && theta) pkur = efopen(fname, "w");
+  //  sprintf(fname, "%s.skur", file); if (rl && theta) skur = efopen(fname, "w");
     free(fname);
     
     /* allocate space for input data and analysis matrices */
@@ -375,13 +378,13 @@ int main(int argc, char **argv)
         memset((void *) data_nfilt, 0, nt*FSIZE);
         memset((void *) data_efilt, 0, nt*FSIZE);
 
-        data_pkur = ealloc1float(nt);
-        data_skur = ealloc1float(nt);
-        memset((void *) data_pkur, 0, nt*FSIZE);
-        memset((void *) data_skur, 0, nt*FSIZE);
+ //       data_pkur = ealloc1float(nt);
+//        data_skur = ealloc1float(nt);
+//        memset((void *) data_pkur, 0, nt*FSIZE);
+//        memset((void *) data_skur, 0, nt*FSIZE);
         /* Allocate data for kurtosis window arrays */
-        data_kwl = ealloc1float(iwl);
-        memset((void *) data_kwl, 0, iwl*FSIZE);        
+//        data_kwl = ealloc1float(iwl);
+//        memset((void *) data_kwl, 0, kwl*FSIZE);        
     }        
 
 
@@ -410,7 +413,7 @@ int main(int argc, char **argv)
             /* start loop over samples */
 
             for (it=iwl/2;it<nt-iwl/2;it++) {
-//                warn("Sample %d", it);
+                //warn("Sample %d", it);
                 /* covariance matrix */
 
                 for (i=1;i<=3;i++) 
@@ -447,8 +450,8 @@ int main(int argc, char **argv)
                     data_efilt[it] = data3c[3][it] * calc_sfilt(rl, theta);
                     data_pfilt[it] = data_zfilt[it];
                     data_sfilt[it] = (data_nfilt[it] + data_efilt[it]) / 2;                 
-                    data_pkur[it] = kurtosiswindow(data_pfilt,data_kwl,it - iwl/2,iwl,nt);     
-                    data_skur[it] = kurtosiswindow(data_sfilt,data_kwl,it - iwl/2,iwl,nt);
+//                    data_pkur[it] = kurtosiswindow(data_pfilt,data_kwl,it - kwl/2,kwl,nt);     
+//                    data_skur[it] = kurtosiswindow(data_sfilt,data_kwl,it - kwl/2,kwl,nt);
                }             
 
             } /* end loop over samples */
@@ -482,8 +485,10 @@ int main(int argc, char **argv)
             {
                 fputdata(pfiltfp, headerfp, data_pfilt, nt);
                 fputdata(sfiltfp, headerfp, data_sfilt, nt);
-                fputdata(pkur, headerfp, data_pkur, nt);
-                fputdata(skur, headerfp, data_skur, nt);
+                fputdata(nfiltfp, headerfp, data_nfilt, nt);
+                fputdata(efiltfp, headerfp, data_efilt, nt);
+               // fputdata(pkur, headerfp, data_pkur, nt);
+               // fputdata(skur, headerfp, data_skur, nt);
             }
 
 /* ****************************** END WRITE ********************************* */
@@ -520,8 +525,8 @@ int main(int argc, char **argv)
     if (rl && theta) {
         efclose(pfiltfp);
         efclose(sfiltfp);
-        efclose(pkur);
-        efclose(skur);
+//        efclose(pkur);
+//        efclose(skur);
         }  
     return(CWP_Exit());
 }
@@ -599,14 +604,14 @@ float covar(float *data1, float *data2, int istart, int iwl, float *w)
 }   
 
 
-float kurtosiswindow(float *data, float *data_kwl, int it, int iwl, int nt)
+float kurtosiswindow(float *data, float *data_kwl, int it, int kwl, int nt)
     {
         int i, j;    
-        for (i=it, j=0; i<(it+iwl); i++, j++)
+        for (i=it, j=0; i<(it+kwl); i++, j++)
         {
             data_kwl[j] = data[i];
         }
-        return gsl_stats_float_kurtosis(data_kwl,1,iwl);
+        return gsl_stats_float_kurtosis(data_kwl,1,kwl);
     }
 
 /**********************************************************************/

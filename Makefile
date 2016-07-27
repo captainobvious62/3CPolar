@@ -10,8 +10,8 @@ D = $L/libcwp.a $L/libpar.a $L/libsu.a
 LFLAGS= $(PRELFLAGS) -L$L -L/usr/include -lgsl -lgslcblas -lsu -lpar -lcwp -lm -fopenmp $(POSTLFLAGS)
 
 PROGS =			\
-supolar_PS
-#        sustalta
+supolar_PS      \
+sumatrix
 #	$B/sualford	\
 #	$B/sueipofi	\
 #	$B/suhrot	\
